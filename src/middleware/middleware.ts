@@ -48,6 +48,15 @@ export function middleware(
 
   debugWebhooks(`${eventName} event received (id: ${id})`);
 
+  // GitHub will abort the request if it does not receive a response within 10s
+  // See https://github.com/octokit/webhooks.js/issues/185
+  let didTimeout = false;
+  const timeout = setTimeout(() => {
+    didTimeout = true;
+    response.statusCode = 200;
+    response.end("still processing\n");
+  }, 9000);
+
   return getPayload(request)
     .then((payload: any) => {
       return verifyAndReceive(state, {
@@ -59,10 +68,16 @@ export function middleware(
     })
 
     .then(() => {
+      if (didTimeout) return;
+      clearTimeout(timeout);
+
       response.end("ok\n");
     })
 
     .catch((error: WebhookEventHandlerError) => {
+      if (didTimeout) return;
+      clearTimeout(timeout);
+
       const statusCode = Array.from(error)[0].status;
       response.statusCode = statusCode || 500;
       response.end(error.toString());
