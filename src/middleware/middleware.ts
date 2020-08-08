@@ -50,11 +50,31 @@ export function middleware(
 
   return getPayload(request)
     .then((payload: any) => {
+      // TODO: we keep track of the rawPayload as a means to debug
+      //       "signature does not match event payload and secret" errors
+      //       in production. This is a temporary workaround, we might
+      //       change to require the raw body string for event signature
+      //       verification altogether to address the problem, but right
+      //       now we need to be able to reproduce it, which this workaround
+      //       is meant to help us with.
+      let rawPayload;
+      try {
+        if (typeof payload === "string") {
+          rawPayload = payload;
+          payload = JSON.parse(payload);
+        }
+      } catch (error) {
+        error.message = "Invalid JSON";
+        error.status = 400;
+        throw new AggregateError([error]);
+      }
+
       return verifyAndReceive(state, {
         id: id,
         name: eventName,
         payload,
         signature,
+        rawPayload,
       });
     })
 

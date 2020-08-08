@@ -14,14 +14,6 @@ export function getPayload(request: IncomingMessage): Promise<any> {
 
     request.on("error", (error) => reject(new AggregateError([error])));
     request.on("data", (chunk) => (data += chunk));
-    request.on("end", () => {
-      try {
-        resolve(JSON.parse(data));
-      } catch (error) {
-        error.message = "Invalid JSON";
-        error.status = 400;
-        reject(new AggregateError([error]));
-      }
-    });
+    request.on("end", () => resolve(data));
   });
 }
